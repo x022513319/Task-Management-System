@@ -1,0 +1,47 @@
+[project]
+name = "task-management-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.135.1",
+    "sqlalchemy>=2.0.48",
+    "alembic>=1.18.4",
+    "psycopg2-binary>=2.9.11",
+    "redis>=7.3.0",
+    "pyjwt>=2.12.1",
+    "bcrypt>=5.0.0",
+    "passlib>=1.7.4",
+    "uvicorn[standard]>=0.41.0",
+    "python-multipart>=0.0.22",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=1.19.1",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.15.6",
+    "sqlalchemy[mypy]>=2.0.48",
+    "types-redis>=4.6.0.20241004",
+]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes（未使用變數、import 等）
+    "I",   # isort（import 排序）
+    "UP",  # pyupgrade（自動用新語法）
+]
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+ignore_missing_imports = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]  # plugin for SQLAlchemy

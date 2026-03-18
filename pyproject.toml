@@ -15,6 +15,9 @@ dependencies = [
     "passlib>=1.7.4",
     "uvicorn[standard]>=0.41.0",
     "python-multipart>=0.0.22",
+    "pydantic-settings>=2.13.1",
+    "asyncpg>=0.31.0",
+    "typing>=3.10.0.0",
 ]
 
 [dependency-groups]
@@ -44,4 +47,4 @@ select = [
 python_version = "3.13"
 strict = false
 ignore_missing_imports = true
-plugins = ["sqlalchemy.ext.mypy.plugin"]  # plugin for SQLAlchemy
+plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]  # plugin for SQLAlchemy

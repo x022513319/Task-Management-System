@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     REDIS_DATABASE_URL: RedisDsn
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
+    JWT_ISS: str = "task-management-api"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 

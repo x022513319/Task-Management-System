@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 
-from app.api import auth
+from app.api import auth, tasks
 
 app = FastAPI()
 app.include_router(auth.router)
+app.include_router(tasks.router)
 
 # uvicorn 需要直接取得 app 物件，所以 app 要在 module 層級：
 

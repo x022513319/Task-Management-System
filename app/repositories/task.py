@@ -32,7 +32,7 @@ class TaskRepository:
         return result.scalar_one_or_none()
 
     async def create_task(
-        self, user_id: uuid.UUID, title: str, description: str
+        self, user_id: uuid.UUID, title: str, description: str | None
     ) -> Task:
         task = Task(user_id=user_id, title=title, description=description)
         self.session.add(task)
@@ -40,8 +40,13 @@ class TaskRepository:
         await self.session.refresh(task)
         return task
 
-    async def update_task(self, task_id: uuid.UUID, data: TaskUpdate) -> Task | None:
-        task = await self.session.get(Task, task_id)
+    async def update_task(
+        self, user_id: uuid.UUID, task_id: uuid.UUID, data: TaskUpdate
+    ) -> Task | None:
+        result = await self.session.execute(
+            select(Task).where(Task.user_id == user_id, Task.id == task_id)
+        )
+        task = result.scalar_one_or_none()
         if not task:
             return None
 
@@ -55,6 +60,8 @@ class TaskRepository:
         await self.session.refresh(task)
         return task
 
-    async def delete_task(self, task_id: uuid.UUID) -> None:
-        await self.session.execute(delete(Task).where(Task.id == task_id))
+    async def delete_task(self, user_id: uuid.UUID, task_id: uuid.UUID) -> None:
+        await self.session.execute(
+            delete(Task).where(Task.user_id == user_id, Task.id == task_id)
+        )
         await self.session.commit()

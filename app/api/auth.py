@@ -1,8 +1,10 @@
 # auth.py 認證相關（register, login, logout, refresh token）
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..db.redis import get_redis
 from ..db.session import get_db
 from ..schemas.user import TokenResponse, UserCreate, UserLogin
 from ..services.auth import AuthServices
@@ -35,15 +37,73 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", status_code=201)
 # 不加括號 - 把 get_db 函式本身傳給 Depends
 async def register(
-    req: UserCreate, session: AsyncSession = Depends(get_db)
+    res: Response,
+    req: UserCreate,
+    session: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ) -> TokenResponse:
-    auth_services = AuthServices(session=session)
-    return await auth_services.register(username=req.username, password=req.password)
+    auth_services = AuthServices(session=session, redis=redis)
+    access_token, refresh_token = await auth_services.register(
+        username=req.username, password=req.password
+    )
+    res.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+    return TokenResponse(access_token=access_token)
 
 
 @router.post("/login", status_code=200)
 async def login(
-    req: UserLogin, session: AsyncSession = Depends(get_db)
+    res: Response,
+    req: UserLogin,
+    session: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ) -> TokenResponse:
-    auth_services = AuthServices(session=session)
-    return await auth_services.login(username=req.username, password=req.password)
+    auth_services = AuthServices(session=session, redis=redis)
+    access_token, refresh_token = await auth_services.login(
+        username=req.username, password=req.password
+    )
+    res.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+    return TokenResponse(access_token=access_token)
+
+
+# Request:     包含所有請求的資訊 (headers, cookies, body) (還有例如ip, method, url等)
+# Response:    用來修改回應的物件
+# res 負責:    Cookie、Header、Status Code
+# return 負責: Response Body (JSON)
+# FastAPI 合併 → 完整的 HTTP Response
+@router.post("/refresh", status_code=200)
+async def refresh(
+    res: Response,
+    req: Request,
+    session: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> TokenResponse:
+    auth_services = AuthServices(session=session, redis=redis)
+    refresh_token = req.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing refresh token")
+
+    # 不需要另外傳 user_id，
+    # 因為 user_id 已經在 refresh token 的 JWT payload 裡了（sub 欄位）
+    access_token, refresh_token = await auth_services.refresh(
+        refresh_token=refresh_token
+    )
+    res.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+    return TokenResponse(access_token=access_token)
+
+
+@router.post("/logout", status_code=200)
+async def logout(
+    res: Response,
+    req: Request,
+    session: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> None:
+    # 可以將 session, redis 拆成兩個service (AuthService, TokenService)
+    # 不過對 practice project 來說有點 overdesigned 所以省略
+    auth_services = AuthServices(session=session, redis=redis)
+    refresh_token = req.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing refresh token")
+
+    await auth_services.logout(refresh_token=refresh_token)
+    res.delete_cookie("refresh_token")

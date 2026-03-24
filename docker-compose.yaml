@@ -9,7 +9,17 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}" # host:container
+
+  redis:
+    image: redis:8.4-alpine
+    container_name: redis_db
+    restart: unless-stopped # Container 崩潰或主機重啟後的重啟策略
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    volumes:
+      - redis_data:/data
 
 volumes:
   db_data:
+  redis_data:

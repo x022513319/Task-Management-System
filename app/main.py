@@ -1,8 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api import auth, tasks
+from app.db.redis import close_redis_pool, init_redis_pool
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_redis_pool()  # 啟動時建立 pool
+    yield
+    await close_redis_pool()  # 關閉時釋放
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(tasks.router)
 

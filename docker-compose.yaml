@@ -1,4 +1,18 @@
 services:
+  task-management-api:
+    image: task-management-api:latest
+    container_name: task-management-api
+    restart: unless-stopped
+    ports:
+    - "8000:8000"
+    environment:
+      SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+      REDIS_DATABASE_URL: redis://redis:${REDIS_PORT}/0
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - db
+      - redis
+
   db:
     image: postgres:17
     shm_size: 128mb
@@ -9,14 +23,14 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}" # host:container
+      - "${POSTGRES_PORT}:5432" # host:container
 
   redis:
     image: redis:8.4-alpine
     container_name: redis_db
     restart: unless-stopped # Container 崩潰或主機重啟後的重啟策略
     ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
 

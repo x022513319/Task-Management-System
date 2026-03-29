@@ -101,7 +101,7 @@ docker compose up -d
 ### 3. 安裝依賴
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 4. 執行 Migration
@@ -126,16 +126,32 @@ API 文件：http://localhost:8000/docs
 - **Refresh Token**：長效（預設 7 天），放在 HttpOnly Cookie，用於換發新的 access token
 - Refresh token 同時存入 Redis，登出時從 Redis 刪除，實現真正的 token 撤銷（revocation）
 
-### Redis Cache-aside 模式（待實作）
+### Redis Cache-aside 模式
 
 讀取時先查 Redis，cache miss 才查 DB，寫入 DB 後同步 invalidate cache。
+
+- Cache key：`tasks:user:<user_id>`
+- `GET /tasks` 命中快取直接回傳；新增、更新、刪除任務時自動 invalidate
+
+### CI/CD
+
+**CI**（`.github/workflows/ci.yaml`）：每次 push / PR 觸發三個並行 job：
+- `ruff`：lint + format check
+- `mypy`：static type check
+- `pytest`：unit tests + integration tests（使用真實 PostgreSQL 17 + Redis 8.4）
+
+**CD**（`.github/workflows/cd.yaml`）：push 到 `main` 或推 `v*.*.*` tag 時觸發：
+- 使用 Docker Buildx 建置 image
+- 推送到 GitHub Container Registry（GHCR）
+- Tag 策略：`:latest`、`:main`、`:sha-<hash>`、語意化版本（`:1.2.3`、`:1.2`）
 
 ## 學習進度
 
 - [x] JWT access token + refresh token 機制
 - [x] Redis 儲存 refresh token（revocation）
-- [ ] Redis Cache-aside（任務列表快取）
+- [x] Redis Cache-aside（任務列表快取）
+- [x] Docker 化（multi-stage build，uv + python:3.13-slim）
+- [x] GitHub Actions CI（ruff + mypy + pytest）
+- [x] GitHub Actions CD（Docker build & push to GHCR）
 - [ ] Redis API Rate Limiting
-- [ ] Docker 化（應用程式）
-- [ ] GitHub Actions CI/CD
-- [ ] 部署到 Azure Container Apps
+- [ ] 部署到 Azure/AWS Container Apps

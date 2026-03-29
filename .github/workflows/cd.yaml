@@ -1,0 +1,62 @@
+name: CD
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"] # version
+  workflow_dispatch: # 手動觸發 
+  
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }} # 自動變成 owner/repo-name
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # 讀取 repo 內容（checkout 需要）
+      packages: write # 必須給這個權限才能 push 到 GHCR
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # default
+      
+
+      # push to main 
+      #  :main, :sha-abc1234, :latest
+      # push tag v1.2.3
+      #  :1.2.3, :1.2, :sha-abc1234
+      - name: Generate tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch          # main → :main
+            type=semver,pattern={{version}} # v1.2.3 → :1.2.3
+            type=semver,pattern={{major}}.{{minor}} # → :1.2
+            type=sha,prefix=sha-           # → :sha-abc1234
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+        
+      # Docker BuildKit（Buildx）
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: . #  Dockerfile 的 build context 是當前目錄(repo 根目錄)
+          push: true #  build 完直接 push，設成 false 的話只 build 不 push
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 從 GitHub Actions cache 讀取上次 build 的 layer cache
+          cache-from: type=gha # 用 GitHub Actions cache
+          # 把這次 build 的所有 layer 存進 cache
+          # mode=max 代表連中間層也存 命中率更高
+          cache-to: type=gha,mode=max

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     TASK_CACHE_EXPIRE_MINUTES: int = 10
+    LOGIN_LIMIT: int = 5
+    LOGIN_WINDOW: int = 60
+    TASK_LIMIT: int = 60
+    TASK_WINDOW: int = 60
 
 
 settings = Settings()

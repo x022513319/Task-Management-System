@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.config import settings
+from ..core.rate_limiter import make_rate_limiter
 from ..db.redis import get_redis
 from ..db.session import get_db
 from ..schemas.user import TokenResponse, UserCreate, UserLogin
@@ -51,9 +53,15 @@ async def register(
 
 
 @router.post("/login", status_code=200)
+# 有預設值的參數必須排在沒有預設值的參數後面
 async def login(
     res: Response,
     req: UserLogin,
+    _: None = Depends(
+        make_rate_limiter(
+            name="login", limit=settings.LOGIN_LIMIT, window=settings.LOGIN_WINDOW
+        )
+    ),
     session: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> TokenResponse:

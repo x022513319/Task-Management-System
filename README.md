@@ -153,5 +153,4 @@ API 文件：http://localhost:8000/docs
 - [x] Docker 化（multi-stage build，uv + python:3.13-slim）
 - [x] GitHub Actions CI（ruff + mypy + pytest）
 - [x] GitHub Actions CD（Docker build & push to GHCR）
-- [ ] Redis API Rate Limiting
-- [ ] 部署到 Azure/AWS Container Apps
+- [x] Redis API Rate Limiting（Fixed Window on `/auth/login`、Sliding Window on `/tasks`）

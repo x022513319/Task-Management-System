@@ -1,5 +1,8 @@
 import pytest
 from httpx import AsyncClient
+from redis.asyncio import Redis
+
+from app.core.config import settings
 
 # 若以function為單位，則 asyncio_mode = "auto" 時
 # 不需要加 @pytest.mark.asyncio
@@ -92,6 +95,35 @@ class TestLogin:
 
         # Assert
         assert refresh_res.status_code == 401
+
+    async def test_login_rate_limit(self, client: AsyncClient):
+        # Arrange
+        payload = {"username": "test", "password": "test"}
+
+        # Act
+        for _ in range(settings.LOGIN_LIMIT):
+            res = await client.post("/auth/login", json=payload)
+            assert res.status_code != 429
+        res = await client.post("/auth/login", json=payload)
+        assert res.status_code == 429
+
+    async def test_login_rate_limit_reset(self, client: AsyncClient, get_redis: Redis):
+        payload = {"username": "test", "password": "test"}
+
+        for _ in range(settings.LOGIN_LIMIT):
+            await client.post("/auth/login", json=payload)
+        res = await client.post("/auth/login", json=payload)
+        assert res.status_code == 429
+
+        keys = await get_redis.keys("rate_limit:*")
+        print(keys)
+        # 模擬 TTL expired
+        if keys:
+            await get_redis.delete(*keys)
+        keys = await get_redis.keys("rate_limit:*")
+        print(keys)
+        res = await client.post("/auth/login", json=payload)
+        assert res.status_code != 429
 
 
 @pytest.mark.asyncio

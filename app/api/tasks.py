@@ -7,6 +7,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.config import settings
+from ..core.rate_limiter import make_sliding_window_limiter
 from ..db.redis import get_redis
 from ..db.session import get_db
 from ..middlewares.auth import get_current_user
@@ -23,6 +24,9 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 #   3. 可以接受短暫不一致 — 不需要每次都是最新資料
 @router.get("/", status_code=200)
 async def get_tasks(
+    _: None = Depends(
+        make_sliding_window_limiter("tasks", settings.TASK_LIMIT, settings.TASK_WINDOW)
+    ),
     redis: Redis = Depends(get_redis),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -54,6 +58,9 @@ async def get_tasks(
 @router.post("/", status_code=201)
 async def create_task(
     req: TaskCreate,
+    _: None = Depends(
+        make_sliding_window_limiter("tasks", settings.TASK_LIMIT, settings.TASK_WINDOW)
+    ),
     redis: Redis = Depends(get_redis),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -74,6 +81,9 @@ async def create_task(
 async def update_task(
     task_id: uuid.UUID,
     req: TaskUpdate,
+    _: None = Depends(
+        make_sliding_window_limiter("tasks", settings.TASK_LIMIT, settings.TASK_WINDOW)
+    ),
     redis: Redis = Depends(get_redis),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),  # 宣告了就會驗證，不一定要用到
@@ -95,6 +105,9 @@ async def update_task(
 @router.delete("/{task_id}", status_code=200)
 async def delete_task(
     task_id: uuid.UUID,
+    _: None = Depends(
+        make_sliding_window_limiter("tasks", settings.TASK_LIMIT, settings.TASK_WINDOW)
+    ),
     redis: Redis = Depends(get_redis),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
